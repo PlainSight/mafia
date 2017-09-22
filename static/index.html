@@ -1,0 +1,125 @@
+<html>
+	<body>
+		<h1>Shit Mafia Game 0.1</h1>
+		
+    <ul class="js-statements">
+        <li>Create or join a game</li>
+        <li>Enter the room code to join a game</li>
+    </ul>
+    <ul class="js-options">
+        <li><button style='background-color: cyan;'>Create a game</button></li>
+    </ul>
+    <div class="js-enter">
+        <input class="js-entrytext" type="text" maxlength="25"></input>
+        <button class="js-submitentry">Submit</button>
+    </div>
+
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(function () {
+            // 4 states: null, info, select, enter
+            var state = "null"
+
+            var ws;
+
+            var statementsElement = $(".js-statements")
+            var optionsElement = $(".js-options")
+            var entryElement = $(".js-enter")
+            var entryText = $(".js-entrytext")
+            var entrySubmit = $(".js-submitentry")
+
+            optionsElement.click(function(e) {
+                ws.send(JSON.stringify({
+                    Type: 1,
+                    Choice: e.target.innerHTML
+                }))
+            })
+
+            entrySubmit.click(function() {
+                et = entryText.val()
+
+                if (et.length > 0) {
+                    ws.send(JSON.stringify({
+                        Type: 0,
+                        Choice: et
+                    }))
+                }
+            })
+
+            function setStatements(s) {
+                statementsElement.empty()
+                for (var i = 0; i < s.length; i++) {
+                    statementsElement.append("<li>" + s[i] + "</li>")
+                }
+            }
+
+            function setOptions(o) {
+                optionsElement.empty()
+                for (var i = 0; i < o.length; i++) {
+                    optionsElement.append("<li><button>" + o[i] + "</button></li>")
+                }
+            }
+
+            function setState(s) {
+                state = s;
+
+                switch (state) {
+                    case "null":
+                        // draw main menu
+                        optionsElement.show()
+                        entryText.val('')
+                        entryElement.show()
+                        break
+                    case "select":
+                        optionsElement.show()
+                        entryElement.hide()
+                        break
+                    case "enter":
+                        optionsElement.hide()
+                        entryText.val('')
+                        entryElement.show()
+                        break
+                    case "info":
+                        optionsElement.hide()
+                        entryElement.hide()
+                        break
+                }
+            }
+
+            if (window.WebSocket === undefined) {
+                return;
+            } else {
+                ws = initWS();
+            }
+            function initWS() {
+                var socket = new WebSocket("ws://" + window.location.host + "/ws");
+                // socket.onopen = function() {
+                // };
+                socket.onmessage = function (e) {
+                    oo = JSON.parse(e.data)
+                    console.log(oo)
+
+                    setState(oo.State)
+                    if (oo.Options != null) {
+                        setOptions(oo.Options)
+                    }
+                    if (oo.Statements != null) {
+                        setStatements(oo.Statements)
+                    }
+                    if (oo.Cookie != null) {
+                        document.cookie = "userid=" + oo.Cookie
+                    }
+                };
+                socket.onclose = function () {
+                    console.log("You disconnected")
+                };
+                return socket;
+            }
+            $("#sendBtn").click(function (e) {
+                e.preventDefault();
+                ws.send(JSON.stringify({ Num: parseInt($("#numberfield").val()) }));
+            });
+        });
+    </script>
+	</body>
+</html>
