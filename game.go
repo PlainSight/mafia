@@ -135,7 +135,6 @@ func (g *game) addNightAction(a action) {
 		if p.alive && p.class != CitizenClass {
 			if _, ok := g.nightActions[p]; !ok {
 				waitingForActions = true
-				fmt.Printf("waiting for %s to perform an action\n", p.name)
 			}
 		}
 	}
@@ -155,7 +154,6 @@ func (g *game) addVote(v vote) {
 		if p.alive {
 			if _, ok := g.votes[p]; !ok {
 				waitingForVotes = true
-				fmt.Printf("waiting for %s to vote\n", p.name)
 			}
 		}
 	}
@@ -195,6 +193,18 @@ func (g *game) unstartedSerializedStatement() []string {
 	allNames := strings.Join(playerNames, ", ")
 
 	return []string{"Lobby Code: " + g.name, fmt.Sprintf("Players: %s", allNames)}
+}
+
+func (g *game) alivePlayerSansSelfList(self *player) []string {
+	var alivePlayers []string
+
+	for _, p := range g.players {
+		if p.alive && p != self {
+			alivePlayers = append(alivePlayers, p.name)
+		}
+	}
+
+	return alivePlayers
 }
 
 func (g *game) alivePlayerList() []string {
@@ -323,7 +333,7 @@ func (g *game) broadcastNightState() {
 			if p.alive {
 				o = options{
 					Statements: append(g.runningSerializedStatement(), "Time: Night-time", p.class.actionString()),
-					Options:    g.alivePlayerList(),
+					Options:    g.alivePlayerSansSelfList(p),
 					State:      "select",
 				}
 			} else {
@@ -346,7 +356,7 @@ func (g *game) broadcastVoteState() {
 			if p.alive {
 				o = options{
 					Statements: append(g.runningSerializedStatement(), "Time: Vote-time", "Vote to lynch someone"),
-					Options:    g.alivePlayerList(),
+					Options:    g.alivePlayerSansSelfList(p),
 					State:      "select",
 				}
 			} else {
@@ -520,11 +530,7 @@ func (g *game) run() {
 
 			// wait for all actions
 
-			fmt.Println("before wait")
-
 			<-g.allActionsDone
-
-			fmt.Println("after wait")
 
 			// calculate action effects
 			dead, investigated := g.calculateNight()
@@ -670,6 +676,7 @@ func (g *game) processAction(p *player, choice string) {
 
 		g.addNightAction(a)
 	case DiscussionState:
+		g.skipDiscussion()
 		p.sendThanksForSkippingState()
 	case VoteState:
 		p.sendThanksForVotingState()

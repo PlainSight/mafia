@@ -93,8 +93,8 @@
             }
             function initWS() {
                 var socket = new WebSocket("ws://" + window.location.host + "/ws");
-                // socket.onopen = function() {
-                // };
+                socket.onopen = function() {
+                };
                 socket.onmessage = function (e) {
                     oo = JSON.parse(e.data)
                     console.log(oo)
@@ -111,7 +111,6 @@
                     }
                 };
                 socket.onclose = function () {
-                    console.log("You disconnected")
                 };
                 return socket;
             }

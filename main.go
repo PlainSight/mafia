@@ -25,7 +25,7 @@ func main() {
 
 	http.Handle("/", http.FileServer(http.Dir("static")))
 	http.HandleFunc("/ws", handleWs)
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8090", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -107,8 +107,6 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 		if err != nil {
 			fmt.Println("Error reading json.", err)
 		}
-
-		fmt.Printf("Got message: %#v\n", m)
 
 		// not in game
 		if g == nil {
