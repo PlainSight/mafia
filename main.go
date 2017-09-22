@@ -7,6 +7,7 @@ import (
 	//"net"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -62,10 +63,12 @@ func makeNewGame() *game {
 	}
 
 	g := &game{
-		name:    name,
-		players: []*player{},
-		state:   PregameState,
-		turn:    0,
+		name:         name,
+		nightActions: make(map[*player]action),
+		namutex:      &sync.Mutex{},
+		players:      []*player{},
+		state:        PregameState,
+		turn:         0,
 	}
 
 	games[name] = g
@@ -146,6 +149,13 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 
 				}
 			case Select:
+				if g.state == PregameState && m.Choice == "Start" && g.namedAndConnectedPlayers() >= 5 {
+					go g.run()
+				}
+
+				if g.state == NightState || g.state == VoteState {
+					g.processAction(p, m.Choice)
+				}
 			}
 		}
 
