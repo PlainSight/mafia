@@ -55,7 +55,6 @@ var games = make(map[string]*game)
 var players = make(map[string]*player)
 
 func makeNewGame() *game {
-
 	name := ""
 
 	for i := 0; i < 4; i++ {
@@ -63,12 +62,17 @@ func makeNewGame() *game {
 	}
 
 	g := &game{
-		name:         name,
-		nightActions: make(map[*player]action),
-		namutex:      &sync.Mutex{},
-		players:      []*player{},
-		state:        PregameState,
-		turn:         0,
+		name:              name,
+		nightActions:      make(map[*player]action),
+		votes:             make(map[*player]vote),
+		namutex:           &sync.Mutex{},
+		vmutex:            &sync.Mutex{},
+		players:           []*player{},
+		state:             PregameState,
+		turn:              0,
+		allActionsDone:    make(chan int),
+		allVotesCast:      make(chan int),
+		allSkipDiscussion: make(chan int),
 	}
 
 	games[name] = g
@@ -110,7 +114,7 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 		if g == nil {
 			switch m.Type {
 			case Enter:
-				if games[m.Choice] != nil {
+				if games[m.Choice] != nil && games[m.Choice].state == PregameState {
 					g = games[m.Choice]
 				} else {
 					continue
