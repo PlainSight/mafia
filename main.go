@@ -92,12 +92,12 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 	var g *game
 	var p *player
 
-	closeHandler := func(code int, text string) error {
-		kill <- 1
-		return nil
-	}
+	// closeHandler := func(code int, text string) error {
+	// 	kill <- 1
+	// 	return nil
+	// }
 
-	conn.SetCloseHandler(closeHandler)
+	// conn.SetCloseHandler(closeHandler)
 
 	// handle incomming commands
 	for {
