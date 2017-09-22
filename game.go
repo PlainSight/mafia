@@ -74,6 +74,8 @@ const (
 	VoteState
 	// night state
 	NightState
+	// post game state
+	DoneState
 )
 
 type player struct {
@@ -419,6 +421,20 @@ func (g *game) broadcastFinishState() {
 	}
 }
 
+func (g *game) broadcastResetState() {
+	for _, p := range g.players {
+		if p.connected {
+			o := options{
+				Statements: []string{"Create or join a game", "Enter the room code to join a game"},
+				Options:    []string{"Create a game"},
+				State:      "null",
+			}
+
+			sendToConn(o, p.connection)
+		}
+	}
+}
+
 func (g *game) broadcastNightResults(dead *player, investigated *player) {
 	result := "during the night time no one died"
 	if dead != nil {
@@ -575,6 +591,12 @@ func (g *game) run() {
 	}
 
 	g.broadcastFinishState()
+
+	g.state = DoneState
+
+	<-time.After(time.Second * 15)
+
+	g.broadcastResetState()
 
 	delete(games, g.name)
 }

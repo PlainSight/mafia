@@ -108,6 +108,11 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 			fmt.Println("Error reading json.", err)
 		}
 
+		if g != nil && g.state == DoneState {
+			p = nil
+			g = nil
+		}
+
 		// not in game
 		if g == nil {
 			switch m.Type {
