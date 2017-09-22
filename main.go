@@ -87,25 +87,26 @@ func sendToConn(o options, conn *websocket.Conn) {
 
 func processWebsocketInteractions(conn *websocket.Conn) {
 
-	kill := make(chan int)
+	killed := false
 
 	var g *game
 	var p *player
 
-	// closeHandler := func(code int, text string) error {
-	// 	kill <- 1
-	// 	return nil
-	// }
+	closeHandler := func(code int, text string) error {
+		killed = true
+		return nil
+	}
 
-	// conn.SetCloseHandler(closeHandler)
+	conn.SetCloseHandler(closeHandler)
 
 	// handle incomming commands
-	for {
+	for !killed {
 		m := msg{}
 
 		err := conn.ReadJSON(&m)
 		if err != nil {
 			fmt.Println("Error reading json.", err)
+			return
 		}
 
 		if g != nil && g.state == DoneState {
@@ -164,12 +165,6 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 					g.processAction(p, m.Choice)
 				}
 			}
-		}
-
-		select {
-		case <-kill:
-			return
-		default:
 		}
 	}
 }
