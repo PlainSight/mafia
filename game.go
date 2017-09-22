@@ -282,7 +282,7 @@ func (g *game) broadcastStartingState() {
 			o := options{
 				Statements: append(g.runningSerializedStatement(),
 					fmt.Sprintf("You are a %s", p.class.toString()),
-					"Night-time will begin in 20 seconds, please remember which role your character is"),
+					"Night-time will begin in 10 seconds, please remember which role your character is"),
 				State: "info",
 			}
 
@@ -508,7 +508,7 @@ func (g *game) run() {
 
 	g.broadcastStartingState()
 
-	time.Sleep(time.Second * 20)
+	time.Sleep(time.Second * 10)
 
 	nextState := NightState
 

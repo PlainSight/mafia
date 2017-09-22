@@ -157,7 +157,7 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 					go g.run()
 				}
 
-				if g.state == NightState || g.state == VoteState {
+				if g.state == NightState || g.state == VoteState || g.state == DiscussionState {
 					g.processAction(p, m.Choice)
 				}
 			}
