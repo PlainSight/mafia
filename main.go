@@ -7,6 +7,7 @@ import (
 	//"net"
 	"math/rand"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -118,8 +119,10 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 		if g == nil {
 			switch m.Type {
 			case Enter:
-				if games[m.Choice] != nil && games[m.Choice].state == PregameState {
-					g = games[m.Choice]
+				upperChoice := strings.ToUpper(m.Choice)
+
+				if games[upperChoice] != nil && games[upperChoice].state == PregameState {
+					g = games[upperChoice]
 				} else {
 					continue
 				}
