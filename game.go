@@ -194,7 +194,13 @@ func (g *game) unstartedSerializedStatement() []string {
 
 	allNames := strings.Join(playerNames, ", ")
 
-	return []string{"Lobby Code: " + g.name, fmt.Sprintf("Players: %s", allNames)}
+	statements := []string{"Lobby Code: " + g.name, fmt.Sprintf("Players: %s", allNames)}
+
+	if len(allNames) < 5 {
+		statements = append(statements, "Require at least 5 players to start")
+	}
+
+	return statements
 }
 
 func (g *game) alivePlayerSansSelfList(self *player) []string {
