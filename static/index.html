@@ -125,6 +125,14 @@
             function initWS() {
                 var socket = new WebSocket("ws://" + window.location.host + "/ws");
                 socket.onopen = function() {
+                    console.log(document.cookie)
+                    var playerid = document.cookie.replace('userid=', '')
+                    if (playerid.length) {
+                         ws.send(JSON.stringify({
+                            Type: 2,
+                            Choice: playerid
+                        }));
+                    }
                 };
                 socket.onmessage = function (e) {
                     oo = JSON.parse(e.data)
@@ -137,7 +145,7 @@
                     if (oo.Statements != null) {
                         setStatements(oo.Statements)
                     }
-                    if (oo.Cookie != null) {
+                    if (oo.Cookie) {
                         document.cookie = "userid=" + oo.Cookie
                     }
                 };

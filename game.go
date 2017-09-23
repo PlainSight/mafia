@@ -79,12 +79,14 @@ const (
 )
 
 type player struct {
-	game      *game
-	name      string
-	named     bool
-	class     class
-	alive     bool
-	connected bool
+	id          int32
+	game        *game
+	name        string
+	named       bool
+	class       class
+	alive       bool
+	connected   bool
+	lastpayload options
 
 	connection *websocket.Conn
 }
@@ -273,7 +275,7 @@ func (p *player) sendThanksForActingState() {
 		State:      "info",
 	}
 
-	sendToConn(o, p.connection)
+	sendToConn(o, p.connection, p)
 }
 
 func (p *player) sendThanksForVotingState() {
@@ -282,7 +284,7 @@ func (p *player) sendThanksForVotingState() {
 		State:      "info",
 	}
 
-	sendToConn(o, p.connection)
+	sendToConn(o, p.connection, p)
 }
 
 func (p *player) sendThanksForSkippingState() {
@@ -291,91 +293,84 @@ func (p *player) sendThanksForSkippingState() {
 		State:      "info",
 	}
 
-	sendToConn(o, p.connection)
+	sendToConn(o, p.connection, p)
 }
 
 func (g *game) broadcastStartingState() {
 	for _, p := range g.players {
-		if p.connected {
-			o := options{
-				Statements: append(g.runningSerializedStatement(),
-					fmt.Sprintf("You are a %s", p.class.toString()),
-					"Night-time will begin in 10 seconds, please remember which role your character is"),
-				State: "info",
-			}
-
-			sendToConn(o, p.connection)
+		o := options{
+			Statements: append(g.runningSerializedStatement(),
+				fmt.Sprintf("You are a %s", p.class.toString()),
+				"Night-time will begin in 10 seconds, please remember which role your character is"),
+			State:  "info",
+			Cookie: fmt.Sprintf("%d", p.id),
 		}
+
+		sendToConn(o, p.connection, p)
 	}
 }
 
 func (g *game) broadcastDiscussionState() {
 	for _, p := range g.players {
-		if p.connected {
-			var o options
+		var o options
 
-			if p.alive {
-				o = options{
-					Statements: append(g.runningSerializedStatement(), "Time: Discussion-time"),
-					Options:    []string{"Skip"},
-					State:      "select",
-				}
-
-			} else {
-				o = options{
-					Statements: append(g.runningSerializedStatement(), "Time: Discussion-time"),
-					State:      "info",
-				}
+		if p.alive {
+			o = options{
+				Statements: append(g.runningSerializedStatement(), "Time: Discussion-time"),
+				Options:    []string{"Skip"},
+				State:      "select",
 			}
 
-			sendToConn(o, p.connection)
+		} else {
+			o = options{
+				Statements: append(g.runningSerializedStatement(), "Time: Discussion-time"),
+				State:      "info",
+			}
 		}
+
+		sendToConn(o, p.connection, p)
 	}
 }
 
 func (g *game) broadcastNightState() {
 	for _, p := range g.players {
-		if p.connected {
-			var o options
+		var o options
 
-			if p.alive {
-				o = options{
-					Statements: append(g.runningSerializedStatement(), "Time: Night-time", p.class.actionString()),
-					Options:    g.alivePlayerSansSelfList(p),
-					State:      "select",
-				}
-			} else {
-				o = options{
-					Statements: append(g.runningSerializedStatement(), "Time: Night-time"),
-					State:      "info",
-				}
+		if p.alive {
+			o = options{
+				Statements: append(g.runningSerializedStatement(), "Time: Night-time", p.class.actionString()),
+				Options:    g.alivePlayerSansSelfList(p),
+				State:      "select",
 			}
-
-			sendToConn(o, p.connection)
+		} else {
+			o = options{
+				Statements: append(g.runningSerializedStatement(), "Time: Night-time"),
+				State:      "info",
+			}
 		}
+
+		sendToConn(o, p.connection, p)
 	}
 }
 
 func (g *game) broadcastVoteState() {
 	for _, p := range g.players {
-		if p.connected {
-			var o options
+		var o options
 
-			if p.alive {
-				o = options{
-					Statements: append(g.runningSerializedStatement(), "Time: Vote-time", "Vote to lynch someone"),
-					Options:    g.alivePlayerSansSelfList(p),
-					State:      "select",
-				}
-			} else {
-				o = options{
-					Statements: append(g.runningSerializedStatement(), "Time: Vote-time"),
-					State:      "info",
-				}
+		if p.alive {
+			o = options{
+				Statements: append(g.runningSerializedStatement(), "Time: Vote-time", "Vote to lynch someone"),
+				Options:    g.alivePlayerSansSelfList(p),
+				State:      "select",
 			}
-
-			sendToConn(o, p.connection)
+		} else {
+			o = options{
+				Statements: append(g.runningSerializedStatement(), "Time: Vote-time"),
+				State:      "info",
+			}
 		}
+
+		sendToConn(o, p.connection, p)
 	}
 }
 
@@ -392,7 +387,7 @@ func (g *game) broadcastVoteResults(lynched *player) {
 				State:      "info",
 			}
 
-			sendToConn(o, p.connection)
+			sendToConn(o, p.connection, p)
 		}
 	}
 }
@@ -416,28 +411,24 @@ func (g *game) broadcastFinishState() {
 	}
 
 	for _, p := range g.players {
-		if p.connected {
-			o := options{
-				Statements: []string{statement},
-				State:      "info",
-			}
-
-			sendToConn(o, p.connection)
+		o := options{
+			Statements: []string{statement},
+			State:      "info",
 		}
+
+		sendToConn(o, p.connection, p)
 	}
 }
 
 func (g *game) broadcastResetState() {
 	for _, p := range g.players {
-		if p.connected {
-			o := options{
-				Statements: []string{"Create or join a game", "Enter the room code to join a game"},
-				Options:    []string{"Create a game"},
-				State:      "null",
-			}
-
-			sendToConn(o, p.connection)
+		o := options{
+			Statements: []string{"Create or join a game", "Enter the room code to join a game"},
+			Options:    []string{"Create a game"},
+			State:      "null",
 		}
+
+		sendToConn(o, p.connection, p)
 	}
 }
 
@@ -459,28 +450,27 @@ func (g *game) broadcastNightResults(dead *player, investigated *player) {
 	sments := append(g.runningSerializedStatement(), "Time: Morning-time", result)
 
 	for _, p := range g.players {
-		if p.connected {
-			var o options
+		var o options
 
-			if p.class == DetectiveClass && p.alive {
-				o = options{
-					Statements: append(sments, detected),
-					State:      "info",
-				}
-			} else {
-				o = options{
-					Statements: sments,
-					State:      "info",
-				}
+		if p.class == DetectiveClass && p.alive {
+			o = options{
+				Statements: append(sments, detected),
+				State:      "info",
 			}
-
-			sendToConn(o, p.connection)
+		} else {
+			o = options{
+				Statements: sments,
+				State:      "info",
+			}
 		}
+
+		sendToConn(o, p.connection, p)
 	}
 }
 
 func (g *game) addPlayer(c *websocket.Conn) (*player, *game) {
 	p := &player{
+		id:         rand.Int31n(1000000000),
 		game:       g,
 		named:      false,
 		alive:      true,
@@ -506,7 +496,7 @@ func (g *game) namePlayer(p *player, name string) {
 				State:      "select",
 			}
 
-			sendToConn(o, pp.connection)
+			sendToConn(o, pp.connection, pp)
 		}
 	}
 }
@@ -530,6 +520,9 @@ func (g *game) run() {
 	for _, p := range g.players {
 		if p.named && p.connected {
 			filteredPlayers = append(filteredPlayers, p)
+
+			// add players to reconnect list
+			players[p.id] = p
 		}
 	}
 
@@ -604,6 +597,10 @@ func (g *game) run() {
 
 	g.broadcastResetState()
 
+	for _, p := range g.players {
+		delete(players, p.id)
+	}
+
 	delete(games, g.name)
 }
 
@@ -630,18 +627,25 @@ func (g *game) calculateLynched() *player {
 
 // returns dead, investigated
 func (g *game) calculateNight() (*player, *player) {
+
+	var deathVotes []*player
+
 	var dead, saved, investigated *player
 
 	for _, a := range g.nightActions {
 		switch a.actionType {
 		case Kill:
-			dead = a.target
+			deathVotes = append(deathVotes, a.target)
 		case Save:
 			saved = a.target
 		case Investigate:
 			investigated = a.target
 		}
 	}
+
+	deathIndex := rand.Int31n(int32(len(deathVotes)))
+
+	dead = deathVotes[deathIndex]
 
 	if saved == dead {
 		dead = nil

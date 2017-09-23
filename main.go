@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
-	//"net"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -53,7 +53,7 @@ type msg struct {
 }
 
 var games = make(map[string]*game)
-var players = make(map[string]*player)
+var players = make(map[int32]*player)
 
 func makeNewGame() *game {
 	name := ""
@@ -80,7 +80,10 @@ func makeNewGame() *game {
 	return g
 }
 
-func sendToConn(o options, conn *websocket.Conn) {
+func sendToConn(o options, conn *websocket.Conn, p *player) {
+	if p != nil {
+		p.lastpayload = o
+	}
 	if err := conn.WriteJSON(o); err != nil {
 		fmt.Println(err)
 	}
@@ -95,6 +98,9 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 
 	closeHandler := func(code int, text string) error {
 		killed = true
+		if p != nil {
+			p.connected = false
+		}
 		return nil
 	}
 
@@ -133,7 +139,7 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 					State:      "enter",
 				}
 
-				sendToConn(o, conn)
+				sendToConn(o, conn, p)
 			case Select:
 				newgame := makeNewGame()
 				p, g = newgame.addPlayer(conn)
@@ -142,11 +148,24 @@ func processWebsocketInteractions(conn *websocket.Conn) {
 					Statements: append(g.unstartedSerializedStatement(), "Pick a name"),
 					State:      "enter",
 				}
-				sendToConn(o, conn)
+				sendToConn(o, conn, p)
 			case Reconnect:
-				if players[m.Choice] != nil {
-					p = players[m.Choice]
+				fmt.Printf("choice: %s\n", m.Choice)
+
+				playerId, _ := strconv.Atoi(m.Choice)
+
+				fmt.Printf("playerid: %d\n", playerId)
+
+				if players[int32(playerId)] != nil {
+					p = players[int32(playerId)]
 					g = p.game
+
+					fmt.Printf("reconnecting %s\n", p.name)
+
+					p.connection = conn
+					p.connected = true
+
+					sendToConn(p.lastpayload, p.connection, p)
 				}
 			}
 		} else {
